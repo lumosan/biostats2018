@@ -1,0 +1,508 @@
+\documentclass[12pt, twoside, a4paper]{article}
+\usepackage[left=2.5cm, right=2.5cm, top=2.5cm, bottom=2cm]{geometry} % Margin sizes
+\usepackage[english]{babel}  % English localization
+\usepackage{parskip}
+\usepackage{hyperref}
+\usepackage{subcaption}
+\usepackage{todonotes}
+\usepackage{titling}
+\usepackage{amsmath}
+
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+
+\fancyhead[LE,RO]{\thepage}
+\fancyhead[RE,LO]{Lucia Montero Sanchis}
+\date{}
+\setlength{\droptitle}{-20pt} 
+% \postdate{\\[-5pt]}
+
+\renewcommand{\baselinestretch}{1.2}
+
+\begin{document}
+%\SweaveOpts{concordance=TRUE}
+
+\title{Applied Biostatistics \\[15pt] \large{Final project: Horseshoe crab --- Number of satellites around pairs}}
+\author{Lucia Montero Sanchis}
+\maketitle
+
+
+\section{Introduction}
+
+During the breeding season, male horseshoe crabs often crowd around a \textit{nesting couple} or \textit{pair} -- a female with an attached male -- and compete for fertilization \cite{brockmann2000paternity}. It has been observed that some couples gather a large number of satellites around them, whereas others are ignored. This nonrandom distribution was tested by means of experimental manipulations, showing that the most likely reason behind the number of satellites was the characteristics of the mating females \cite{brockmann1996satellite}. In experimental studies, females with a larger number of satellites were found to be larger and in better condition \cite{brockmann1996satellite}.
+
+The dataset contains information for female crabs for which we want to predict the number of male satellites. We carry out an exploratory analysis and apply different methods to determine whether the characteristics of the female horseshoe crabs have a significant effect on the number of satellites.
+
+\section{Exploratory Data Analysis} % (fold)
+\label{sec:eda}
+  This dataset contains information for 173 female horseshoe crabs. The explanatory variables are:
+  \begin{itemize}
+      \item \textbf{Weight (weight)}: Numerical variable representing the total weight of the crab in kilograms.
+      \item \textbf{Carapace width (width)}: Numerical variable representing the carapace width in centimeters.
+      \item \textbf{Color (color)}: Categorical, ordinal variable. There are four categories: 1 (light medium), 2 (medium), 3 (dark medium) and 4 (dark).
+      \item \textbf{Spine condition (spine)}: Categorical, ordinal variable representing the condition of the spines. There are three categories: 1 (both good), 2 (one worn or broken) and 3 (both worn or broken).
+  \end{itemize}
+  In addition, we have the dependent variables:
+  \begin{itemize}
+      \item \textbf{Number of satellites (sat)}: Number of satellites observed around the female.
+      \item Binary variable \textbf{(y)} representing whether the female crab had at least one satellite (1=yes, 0=no).
+  \end{itemize}
+
+The analysis carried out focuses on the number of satellites (\textbf{sat}), whereas the binary variable representing the presence of satellites (\textbf{y}) will not be used. The variables color and spine condition are considered as factors throughout the entire analysis.
+
+Table \ref{table:numsum} represents the numerical summaries of the variables. We can see that the third quartile for variable \textbf{sat} is 5, meaning that at least 75\% of crabs have 5 satellites or less. The histogram for the number of satellites (see Figure \ref{figure:histsat}) shows that over a third of crabs had 0 satellites. Satellite counts of 3 through 6 have slightly higher frequencies; for a larger number of satellites, the frequencies decrease considerably.
+
+\begin{table}[thp]
+    \centering
+    <<echo=FALSE, results = "asis">>=
+    library(car)
+    library(ggplot2)
+    theme_set(theme_light())
+    library(xtable)
+    crab.df = read.delim('data.txt', header = TRUE, sep = "\t", dec = ".")
+    
+    #crab.df$y <- as.factor(crab.df$y)
+    crab.df$color <- as.factor(crab.df$color)
+    crab.df$spine <- as.factor(crab.df$spine)
+    
+    print(xtable(summary(crab.df)), floating=FALSE, comment=FALSE)
+    @
+    %\vspace{-7pt} 
+    \caption{Numerical summaries of variables.}
+    \label{table:numsum}
+\end{table} 
+
+
+\begin{figure}[thp]
+    %\vspace{-5pt} 
+    \centering
+    %\scalebox{.8}{
+    <<echo=FALSE, fig=TRUE, fig.height=4, fig.width=7>>=
+    #hist(crab.df$sat, main="", xlab="satellites", breaks=20) # Histogram for number of satellites
+    qplot(crab.df$sat, geom="histogram", xlab="satellites", bins=16, color=I("white")) 
+    @
+    %}
+    %\vspace{-7pt} 
+    \caption{Histogram of the number of satellites.}
+    \label{figure:histsat}
+\end{figure}
+
+We can use quantile-quantile (Q-Q) plots for determining if \textbf{weight} and carapace \textbf{width} follow a normal distribution. Figures \ref{figure:qqweight} and \ref{figure:qqwidth} represent the normal Q-Q plots for weight and width, respectively. Both variables seem normally distributed. There is however an outlier point that corresponds to a crab weighting 5.2 kg and measuring 33.5 cm, that has 7 satellites.
+
+\begin{figure}[htp]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \hspace{-20pt}
+        <<echo=FALSE, fig=TRUE, fig.height=3.5, fig.width=3.5>>=
+        ggplot(crab.df, aes(sample=weight)) + stat_qq() + geom_abline(intercept=mean(crab.df$weight), slope = sd(crab.df$weight)) + xlab("Theoretical Quantiles") + ylab("Sample Quantiles")
+        @
+        \caption{Normal Q-Q plot for weight.}
+        \label{figure:qqweight}
+    \end{subfigure}
+    \begin{subfigure}[b]{0.48\textwidth}
+        <<echo=FALSE, fig=TRUE, fig.height=3.5, fig.width=3.5>>=
+        ggplot(crab.df, aes(sample=width)) + stat_qq() + geom_abline(intercept=mean(crab.df$width), slope = sd(crab.df$width)) + xlab("Theoretical Quantiles") + ylab("Sample Quantiles")
+        @
+        \caption{Normal Q-Q plot for width.}
+        \label{figure:qqwidth}
+    \end{subfigure}
+    \caption{Normal Q-Q plot for weight and width.}
+    \label{figure:qqwidthweight}
+\end{figure}
+
+We check if there is a linear correlation between variables weight and width by computing Pearson's correlation coefficient, obtaining $r=0.89$. This value suggests a strong positive linear relationship between the two variables. This relationship can be visualized in the scatterplot from Figure \ref{figure:regww}, which has been represented together with the linear model: 
+\centerline{$\textnormal{width}\sim\beta_0+\beta_1\cdot\textnormal{weight}$}
+
+The summary of this linear model is shown in Table \ref{table:weightwidthlm}. For each term we test the null hypothesis that the coefficient is equal to zero. Conversely, the alternate hypothesis would be that the coefficient is different from zero:
+
+\centerline{$H:\beta_0=0\qquad A: \beta_0\neq 0$ \quad\qquad\qquad\qquad $H:\beta_1=0\qquad A: \beta_1\neq 0$}
+
+As seen in Table \ref{table:weightwidthlm}, both p-values are very small ($<2\textnormal{e}-16$). Therefore, we can reject the null hypotheses that $\beta_0$ and $\beta_1$ are equal to 0, meaning that both terms are significant predictors of width. This is especially relevant in the case of weight, since there could be collinearity problems in the following section.
+
+\begin{table}[h!]
+\centering
+<<echo=FALSE, results = "asis">>=
+hmod <- lm(width ~ weight, data=crab.df) 
+print(xtable(summary(hmod)), floating=FALSE, comment=FALSE)
+@
+\caption{Results of fitting the linear model: $\textnormal{width}\sim\beta_0+\beta_1\cdot\textnormal{weight}$}
+\label{table:weightwidthlm}
+\end{table} 
+
+\begin{figure}[htp!]
+    %\vspace{-5pt} 
+    \centering
+    %\scalebox{.8}{
+    <<echo=FALSE, fig=TRUE, fig.height=3, fig.width=4.5>>=
+    ggplot(crab.df, aes(x=weight, y=width)) + geom_point() + 
+    geom_smooth(method=lm)
+    @
+    %}
+    %\vspace{-7pt} 
+    \caption{Scatterplot and regression line for $\textnormal{width}\sim\beta_0+\beta_1\cdot\textnormal{weight}$. The shaded area represents the 95\% confidence region. The model is described in Table \ref{table:weightwidthlm}.}
+    \label{figure:regww}
+\end{figure}
+
+Regarding the values of the parameters, we can see in Table \ref{table:weightwidthlm} that $\beta_1=3.24$. This value is consistent with the positive correlation coefficient that we has been presented, meaning that for each kilogram increment in weight we can expect an increase of 3.24 centimeters in carapace width.  
+
+Table \ref{table:numsum} shows that 95 out of 173 crabs have \textbf{color} 2, which represents 55\% of the total. We can also see that the great majority of crabs have both spines worn or broken, with 70\% of crabs having value 3 for variable \textbf{spine}.
+
+\begin{figure}[htp]
+\vspace{-40pt} 
+\centering
+%\scalebox{.8}{
+<<echo=FALSE, fig=TRUE, fig.height=4, fig.width=7>>=
+# 1.E Relation between color and spine
+spineplot(crab.df$color ~ crab.df$spine, col=gray.colors(4, 0.9, 0.2), xlab="spine", ylab="color")
+@
+%}
+\vspace{-20pt} 
+\caption{Spineplot displaying carapace color and spine condition. The colors used correspond with the color group (1 being the lightest, 4 the darkest).}
+\label{figure:spineplot}
+\end{figure}
+
+Figure \ref{figure:spineplot} gives an overview of the fraction of crabs with each color and carapace width combination. The proportion of crabs with the darkest colors (3 and 4) increases with the number of worn or broken spines, whereas the proportion of crabs with the lightest color (1) decreases. The proportion of crabs with a medium coloring (2) remains nearly the same for the three possible spine conditions. For instance, we can see that there are very few light-colored crabs in the group with both spines worn or broken. Shell coloring depends on age, with older horseshoe crabs being darker \cite{cook1998lessons}. This could explain why these results are observed, since older crabs could have had more chances of breaking or wearing down their spines.
+
+
+% \section{Collinearity Analysis}
+% \todo[inline, color=blue!30]{It is interesting to observe how weight and width affect the presence of satellites. Figures \ref{figure:binweight} and \ref{figure:binwidth} represent the conditional density plots for weight and width, respectively, and the binary variable indicating the presence (or absence) of satellites.}
+
+
+% \begin{figure}[htp]
+%     %\vspace{-5pt} 
+%     \centering
+%     %\scalebox{.8}{
+%     <<echo=FALSE, fig=TRUE, fig.height=4, fig.width=7>>=
+%     cdplot(y ~ weight, data = crab.df, main="") # "Conditional density plot for Weight"
+%     @
+%     %}
+%     %\vspace{-7pt} 
+%     \caption{Conditional density plot for weight}
+%     \label{figure:binweight}
+% \end{figure}
+
+% \begin{figure}[htp]
+%     %\vspace{-5pt} 
+%     \centering
+%     %\scalebox{.8}{
+%     <<echo=FALSE, fig=TRUE, fig.height=4, fig.width=7>>=
+%     cdplot(y ~ width, data = crab.df, main = "") # "Conditional density plot for Width"
+%     @
+%     %}
+%     %\vspace{-7pt} 
+%     \caption{Conditional density plot for width}
+%     \label{figure:binwidth}
+% \end{figure}
+
+
+% \todo[inline, color=blue!30]{Co-dependence (o como se llame) may affect the results of the analysis. Therefore we need to check before.}
+
+% \begin{table}[htp]
+% \centering
+% <<echo=FALSE, results = "asis">>=
+% # 1.D Correlation between width and weight (por lo que se ve en las figuras anteriores)
+% # Fit model
+% hmod <- lm(width ~ weight, data=crab.df) 
+% print(xtable(as.data.frame(coef(hmod))), floating=FALSE, comment=FALSE)
+% @
+% \caption{TODO}
+% \label{table:TODO}
+% \end{table} 
+
+% \todo[inline, color=blue!30]{Table \ref{table:lmwidthweight} shows the results of fitting the linear model (write formula here?). The p-value for weight is very small, suggesting that there is a significant correlation between the two variables (verify this explanation). The estimate for weight is positive, suggesting a positive correlation.
+
+% We see that there is a strong correlation. We will therefore only use the variable ?? for our analysis.}
+
+% \begin{table}[htp]
+% \centering
+% <<echo=FALSE, results = "asis">>=
+% # Fit model
+% hmod <- lm(width ~ weight, data=crab.df) 
+% print(xtable(summary(hmod)), floating=FALSE, comment=FALSE)
+% @
+% \caption{TODO}
+% \label{table:lmwidthweight}
+% \end{table} 
+
+% \begin{figure}[htp]
+% %\vspace{-5pt} 
+% \centering
+% %\scalebox{.8}{
+% <<echo=FALSE, fig=TRUE, fig.height=4, fig.width=7>>=
+% # Fit model
+% hmod <- lm(width ~ weight, data=crab.df) 
+% # Visualize errors
+% #layout(matrix(1:2,ncol=2)) 
+% plot(width ~ weight, data=crab.df) 
+% abline(hmod) 
+% # (Correlacion de 0.886871461049778)
+% @
+% %}
+% %\vspace{-7pt} 
+% \caption{TODO}
+% \label{figure:TODO}
+% \end{figure}
+
+% \begin{figure}[htp]
+% %\vspace{-5pt} 
+% \centering
+% %\scalebox{.8}{
+% <<echo=FALSE, fig=TRUE, fig.height=4, fig.width=7>>=
+% # Fit model
+% hmod <- lm(width ~ weight, data=crab.df) 
+% # Visualize errors
+% #layout(matrix(1:2,ncol=2)) 
+% #plot(width ~ weight, data=crab.df) 
+% #abline(hmod) 
+% plot(hmod, which=2)
+% # (Correlacion de 0.886871461049778)
+% @
+% %}
+% %\vspace{-7pt} 
+% \caption{TODO}
+% \label{figure:TODO}
+% \end{figure}
+
+
+% \begin{figure}[htp]
+% %\vspace{-5pt} 
+% \centering
+% %\scalebox{.8}{
+% <<echo=FALSE, fig=TRUE, fig.height=4, fig.width=7>>=
+% # Fit model
+% hmod <- lm(width ~ weight, data=crab.df) 
+% plot(hmod, which = 1)
+% # (Correlacion de 0.886871461049778)
+% @
+% %}
+% %\vspace{-7pt} 
+% \caption{TODO}
+% \label{figure:TODO}
+% \end{figure}
+
+
+% \begin{table}[htp]
+% \centering
+% <<echo=FALSE, results = "asis">>=
+% aov1 = aov(weight ~ color, data=crab.df)
+% print(xtable(summary(aov1)), floating=FALSE, comment=FALSE)
+% @
+% \caption{TODO}
+% \label{table:TODO}
+% \end{table} 
+
+% \begin{figure}[htp]
+% %\vspace{-5pt} 
+% \centering
+% %\scalebox{.8}{
+% <<echo=FALSE, fig=TRUE, fig.height=4, fig.width=7>>=
+% boxplot(weight ~ color, data = crab.df,
+%         ylab = "Weight", col = "lightgray",
+%         xlab = "Color",
+%         notch = FALSE, varwidth = TRUE)
+% @
+% %}
+% %\vspace{-7pt} 
+% \caption{TODO}
+% \label{figure:TODO}
+% \end{figure}
+
+% \begin{table}[htp]
+% \centering
+% <<echo=FALSE, results = "asis">>=
+% # 1.E Relation between weight and spine (the boxes are drawn with widths proportional to the square-roots of the number of observations in the groups.)
+% aov1 = aov(weight ~ spine, data=crab.df)
+% print(xtable(summary(aov1)), floating=FALSE, comment=FALSE)
+% @
+% \caption{TODO}
+% \label{table:TODO}
+% \end{table} 
+
+% \begin{figure}[htp]
+% %\vspace{-5pt} 
+% \centering
+% %\scalebox{.8}{
+% <<echo=FALSE, fig=TRUE, fig.height=4, fig.width=7>>=
+% # Do boxplot!
+% boxplot(weight ~ spine, data = crab.df, main = "PlantGrowth data",
+%         ylab = "Weight", col = "lightgray",
+%         xlab = "Spine",
+%         notch = FALSE, varwidth = TRUE)
+% @
+% %}
+% %\vspace{-7pt} 
+% \caption{TODO}
+% \label{figure:TODO}
+% \end{figure}
+
+\section{Models} % (fold)
+\label{sec:models}
+
+The number of satellites is a count, which can only take on positive values and is unlikely to be normally distributed. Since multiple regression requires normally distributed variables, this would not be a reasonable approach. Instead, we can fit a \textbf{Generalized Linear Model} (GLM) with a \textbf{log link function} and a \textbf{Poisson error distribution}; this  is known as \textbf{Poisson regression}. However, Poisson regression assumes that the response variable has a Poisson distribution. If this assumption is not true for the data, then other approaches should be considered. One of the characteristics of the Poisson distribution is that the mean is equal to the variance; if there is over-dispersion, meaning that the variance is greater than the mean, a different approach should be taken. It is also possible that the Poisson regression does not fit well if there is an excess number of zeros in the count data. 
+
+Since weight and carapace width have a correlation of $0.89$, only weight will be used to avoid collinearity problems. We will go back to this decision to verify which of the two variables should be used.
+
+\subsection{Poisson regression}
+\label{ssec:poisson}
+One of the distributions used for modeling count data is the Poisson distribution. The results of fitting a \textbf{Generalized Linear Model} (GLM) with a \textbf{log link function} and a \textbf{Poisson error distribution} are shown in Table \ref{table:poisson1}. Using a log link function $g(\mu)=\log{(\mu)}$  ensures that the fitted values are positive \cite{zeileis2008regression}.
+
+\begin{table}[htp]
+\centering
+<<echo=FALSE, results = "asis">>=
+model4p = glm(sat ~ weight + color + spine, family=poisson(link=log), data=crab.df)
+print(xtable(summary(model4p)), floating=FALSE, comment=FALSE)
+@
+\caption{Results of fitting a GLM with a log link function and with a Poisson error distribution to explain the number of satellites.}
+\label{table:poisson1}
+\end{table}
+
+Although some of the predictors are significant, the model from Table \ref{table:poisson1} does not seem to fit well because residual deviance is much larger than the number of degrees of freedom:
+$$\textnormal{Residual deviance: } 549.70 \textnormal{ on } 166 \textnormal{ degrees of freedom}$$
+
+The ratio between residual deviance and degrees of freedom is $549.70 / 166 = 3.31$, which is much larger than $1$. In Section \ref{ssec:overdispersion} we consider different alternatives to obtain a better fit.
+
+\subsection{Dealing with over-dispersion and excess number of zeros}
+\label{ssec:overdispersion}
+There are different approaches for dealing with the limitations of Poisson regression. In the case of over-dispersion, we can use a \textbf{quasipoisson} model. This approach differs from the previous in leaving the dispersion parameter unrestricted; it assumes $Var(Y_i)=\phi \mu_i$ and estimates $\phi$ from the data \cite{zeileis2008regression}. Another way is to use \textbf{Negative Binomial} regression \cite{zeileis2008regression}.
+
+Table \ref{table:qpoisson1} presents the results obtained when fitting a \textbf{quasipoisson model} to the number of satellites. Compared to Poisson regression, the dispersion parameter (scale parameter) is no longer assumed to be $\phi = 1$; the dispersion parameter for quasipoisson is estimated from the data, obtaining $\phi = 3.21$.
+After testing the null hypothesis that the coefficient equals 0 ($H:\beta=0$, $A:\beta\neq0$), in this case only weight is significant at a significance level of $0.05$.
+
+When looking at the residual deviance and number of degrees of freedom for this model, we see that they are the same as for the Poisson model. Therefore, the quasipoisson model does not fit well either.
+$$\textnormal{Residual deviance: } 549.70 \textnormal{ on } 166 \textnormal{ degrees of freedom}$$
+
+\begin{table}[htp]
+\centering
+<<echo=FALSE, results = "asis">>=
+model4qp = glm(sat ~ weight + color + spine, family=quasipoisson(link=log), data=crab.df)
+print(xtable(summary(model4qp)), floating=FALSE, comment=FALSE)
+@
+\caption{Results of fitting a quasipoisson model to explain the number of satellites.}
+\label{table:qpoisson1}
+\end{table}
+
+\newpage
+
+It is also possible to model count data assuming a \textbf{Negative Binomial} distribution. Compared to the quasipoisson approach, one of the advantages of using Negative Binomial regression is that Akaike Information Criteria (AIC) can be used to obtain a reduced model. The results of fitting a Negative Binomial regression model are shown in Table \ref{table:nbmodel1}. The residual deviance and number of degrees of freedom obtained for the Negative Binomial regression are:
+$$\textnormal{Residual deviance: } 196.51 \textnormal{ on } 165 \textnormal{ degrees of freedom}$$
+
+\begin{table}[htp]
+\centering
+<<echo=FALSE, results = "asis">>=
+library(MASS)
+model4b = glm.nb(sat ~ weight + color + spine, data=crab.df, link=log)
+print(xtable(summary(model4b)), floating=FALSE, comment=FALSE)
+@
+\caption{Results of fitting a Negative Binomial regression model to explain the number of satellites.}
+\label{table:nbmodel1}
+\end{table}
+
+The ratio between residual deviance and degrees of freedom is $196.51/165=1.19$, which is a better fit than Poisson and quasipoisson models. It is also worth mentioning that the dispersion parameter estimated for Negative Binomial ($\theta$) is $0.97$; it is taken to be $1$ in the model.
+In this case, when testing the null hypothesis that the coefficient is equal to zero (with the alternate hypothesis that the coefficient is different from zero, $H:\beta=0$, $A:\beta\neq0$), variable weight is the only predictor with a p-value lower than $0.05$. Therefore, we reject the null hypothesis that the coefficient for weight equals 0; this means that weight is a significant predictor of the number of satellites at a $0.05$ significance level. The variable weight has a coefficient of $0.69$, so for each kilogram increase in weight, the expected log count of the number of satellites increases by $0.69$.
+
+The residual deviances and numbers of degrees of freedom for the three models are summarized in Table \ref{table:sumdfpoisson}.
+
+\begin{table}[htp]
+\centering
+\begin{tabular}{rrrr}
+\hline
+                        & Rdev & df & Rdev/df \\
+\hline
+Poisson model           & 549.59 & 165 & 3.33 \\
+Quasipoisson model      & 549.59 & 165 & 3.33 \\
+Negative Binomial model & 196.51 & 165 & 1.19 \\
+\hline
+\end{tabular}
+\caption{Residual deviance (Rdev), degrees of freedom (df) and residual deviance over degrees of freedom ratio (Rdev/df) for the considered models.}
+\label{table:sumdfpoisson}
+\end{table}
+
+
+% <<echo=FALSE, results = "asis">>=
+% library(pscl)
+% @
+
+% However, from what we saw in the histogram for the number of satellites (Figure \ref{figure:histsat}), the distribution of the number of satellites does not seem to be unimodal. Since we also saw in Section \ref{sec:eda} that there was a large number of zeros, a reasonable approach could be to use a \textbf{zero-augmented model}. Using such a model would allow to extend the mean function and increase the likelihood of zero counts \cite{zeileis2008regression}.
+
+% \todo[inline]{zero-augmented Poisson model??? (check...)}
+% \todo[inline]{Comentar los valores que obtengo para el zero-aug poisson}
+% \todo[inline]{buscar alguna forma de comparar la goodness of fit de dos modelos?? (zero-augmented poisson y NB)}
+
+\subsection{Dealing with collinearity}
+In the beginning of the section we decided to use all the predictors except width, because of the strong correlation between width and weight. However, either width or weight could have been taken out of the equation. We now use AIC to compare the Negative Binomial (NB) models with each one taken out, both as models reduced by backwards stepwise elimination and full models \cite{rossiter2008tutorial}. The values obtained are summarized in table \ref{table:aicww}.
+
+\begin{table}[htp]
+\centering
+\begin{tabular}{rrr}
+\hline
+        & Without \textbf{weight} & Without \textbf{width} \\
+\hline
+Full models    & 764.33 & 761.32 \\
+Reduced models & 757.29 & 754.64 \\
+\hline
+\end{tabular}
+\caption{AIC values for full NB models and NB models reduced by backwards stepwise elimination, after taking out either weight or width variables.}
+\label{table:aicww}
+\end{table}
+
+We are interested in the model with the lowest AIC, and we can see from the values obtained that the lowest AIC is achieved by removing width from the model. This is the case for full models and for models reduced by backwards stepwise elimination. 
+
+Table \ref{table:reducednb} shows the results of fitting the model reduced by backwards stepwise elimination after having removed variable width, obtaining the model:
+
+%\centerline{$\log{(\textnormal{sat})}\sim\beta_0+\beta_1\cdot\textnormal{weight}$}
+
+\centerline{$\textnormal{sat}\sim \exp{(\beta_0+\beta_1\cdot\textnormal{weight})}$, with $\beta_0=-0.86$ and $\beta_1=0.76$}
+
+\begin{table}[htp]
+\centering
+<<echo=FALSE, results = "asis">>=
+lms.2 <- step(glm.nb(sat ~ weight + color + spine, data=crab.df, link=log), trace=0)
+print(xtable(summary(lms.2)), floating=FALSE, comment=FALSE)
+@
+\caption{Results of fitting a Negative Binomial regression model to explain the number of satellites and then applying backwards stepwise elimination.}
+\label{table:reducednb}
+\end{table}
+
+When testing the null hypothesis that the coefficients are equal to zero (with the alternate hypothesis that the coefficients are different from zero), both coefficients have a p-value lower than $0.05$. This means that weight is a significant predictor of the number of satellites at a $0.05$ significance level. After reducing the model, the coefficient obtained for variable weight equals $\beta_1=0.76$; hence the expected log count of the number of satellites increases by $0.76$  for each kilogram increase in weight. It is also worth mentioning that the dispersion parameter is again taken to be 1, and the value estimated in this case is $\theta = 0.93$.
+
+In order to visualize the model, it is represented in Figure \ref{figure:nbplot} together with the scatterplot of the data. 
+
+\begin{figure}[htp]
+\vspace{-40pt} 
+\centering
+\scalebox{.9}{
+<<echo=FALSE, fig=TRUE, fig.height=6, fig.width=7>>=
+# 1.E Relation between color and spine
+timeaxis <- seq (0, 6, 0.05)
+Y <- predict(lms.2, list(weight = timeaxis))
+plot(crab.df$weight, crab.df$sat, xlab = "weight", ylab = "satellites", pch = 16, panel.first=grid(lty=1))
+lines(timeaxis, exp(Y), lwd = 2, col = "blue")
+@
+}
+\vspace{-15pt} 
+\caption{Scatterplot and Negative Binomial regression model for predicting the number of satellites. The model is described in Table \ref{table:reducednb}.}
+\label{figure:nbplot}
+\end{figure}
+
+
+% section models (end)
+
+\newpage
+
+\section{Conclusions} % (fold)
+\label{sec:conclusions}
+    We see that out of the three models that have been used to fit the data, Negative Binomial regression was the one with a better fit. We then reduce this model by applying backwards stepwise elimination using AIC and obtain a reduced model with weight as the only predictor.
+    
+    Based on the analysis of the data, we conclude that heavier female crabs tend to gather a larger number of satellites. Given the strong positive correlation found between carapace width and weight, this implies that wider crabs tend to be heavier and therefore have more satellites.
+    
+    From the analyses carried out, color and spine condition do not seem to affect the number of satellites.
+% section conclusions (end)
+
+\newpage
+
+\bibliographystyle{IEEEtran}
+\bibliography{literature}
+
+\end{document}
