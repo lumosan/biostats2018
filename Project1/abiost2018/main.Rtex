@@ -1,0 +1,215 @@
+\documentclass[12pt, twoside, a4paper]{article}
+\usepackage[left=2.5cm, right=2.5cm, top=2.5cm, bottom=2cm]{geometry} % Margin sizes
+\usepackage[english]{babel}  % English localisation
+\usepackage{parskip}
+\usepackage{hyperref}
+\usepackage{subcaption}
+\usepackage{todonotes}
+\usepackage{titling}
+
+\usepackage{fancyhdr}
+
+\pagestyle{fancy}
+\fancyhf{}
+% \lhead[LO]{Juraj Korcek,  Lucia Montero Sanchis}
+% \rhead[LO]{\thepage}
+% \rhead[RE]{}
+% \lhead[RE]{\thepage}
+\fancyhead[LE,RO]{\thepage}
+\fancyhead[RE,LO]{Juraj Korcek, Lucia Montero Sanchis}
+\date{}
+\setlength{\droptitle}{-20pt} 
+% \postdate{\\[-5pt]}
+
+\begin{document}
+%\SweaveOpts{concordance=TRUE}
+
+\title{Plant Growth \\[15pt] \large{Applied Biostatistics -- First Assignment}}
+\author{Juraj Korcek \and Lucia Montero Sanchis}
+\maketitle
+
+
+\section{Introduction}
+
+The ``PlantGrowth'' dataset consists of results collected in an experiment to compare crop yields obtained under a control and two different treatment conditions. The yields were measured in the dried weight of plants.
+
+We carry out an exploratory analysis and apply Analysis of Variance (ANOVA) on this data to determine whether the treatments had a significant effect, by verifying if any of the group weights has a significantly different mean.
+
+
+\begin{figure}
+\vspace{-35pt}
+\centering
+\scalebox{1}{
+<<echo=FALSE, fig=TRUE, fig.width=4.8, fig.height=4.72>>=
+data(PlantGrowth)
+par(cex.lab=.8)
+par(cex.main=.8)
+par(cex.axis=.8)
+require(stats); require(graphics)
+boxplot(weight ~ group, data = PlantGrowth, main = "",
+        ylab = "Dried weight of plants", col = "lightgray",
+        notch = FALSE, varwidth = TRUE)
+stripchart(PlantGrowth$weight[PlantGrowth$group == "ctrl"] ~ PlantGrowth$group[PlantGrowth$group == "ctrl"],
+            vertical = TRUE, method = "jitter",
+            pch = 21, bg = "darkorange3",
+            add = TRUE)
+stripchart(PlantGrowth$weight[PlantGrowth$group == "trt1"] ~ PlantGrowth$group[PlantGrowth$group == "trt1"],
+            vertical = TRUE, method = "jitter",
+            pch = 21, bg = "blue2",
+            add = TRUE) 
+stripchart(PlantGrowth$weight[PlantGrowth$group == "trt2"] ~ PlantGrowth$group[PlantGrowth$group == "trt2"],
+            vertical = TRUE, method = "jitter",
+            pch = 21, bg = "forestgreen",
+            add = TRUE) 
+@
+}
+\vspace{-40pt}
+\caption{Box plot combined with dot plot for each Group category}
+\label{figure:boxplots}
+\end{figure}
+
+
+\section{Exploratory Data Analysis}
+
+This dataset contains 30 observations for the two variables:
+
+\begin{itemize}
+    \item \textbf{Weight}: represents the dried weight of plants. It is a numerical variable, continuous and positive. 
+    \item \textbf{Group}: categorical, nominal variable. There are three categories: Control (ctrl), treatment-1 (trt1) and treatment-2 (trt2). There are 10 observations per category.
+\end{itemize}
+
+Figure \ref{figure:boxplots} shows the combined box plot and dot plot for each Group variable category. We can observe an outlier in the treatment-1 group.
+
+
+
+
+
+
+
+\section{Comparison of means}
+
+As we want to compare means of three groups of one factor, the one-way ANOVA is a reasonable approach, because it is capable of comparing several means at once.
+
+    \subsection{Analysis of Variance (ANOVA)}
+        The null hypothesis ($H$) claims that all the means that are being compared are equal. If $H$ is rejected, the alternative hypothesis ($A$) means that at least one mean is significantly different:
+        
+        \centerline{$ H: \mu_\textnormal{ctrl} = \mu_\textnormal{trt1} = \mu_\textnormal{trt2} \qquad\qquad A: \exists \mu_\textnormal{i} \neq \mu_\textnormal{j}$}
+        
+        If $H$ is rejected, ANOVA does not specify which means are different. Therefore, an additional analysis would be necessary in such a case.
+        
+        \subsubsection{Assumptions}
+            ANOVA  makes the following assumptions about the probability distribution of the observations:
+            \begin{itemize}
+                \item \textbf{Normality} -- The first assumption is that the data is normally distributed within each group or category. In our case we do not have a sufficiently large number of observations and therefore we need to verify this for the quantitative variable Weight.
+                
+                We can do this by looking at the Normal Q-Q plot for the residuals (Figure \ref{figure:AoVplots}) and the boxplots (Figure \ref{figure:boxplots}). In the Q-Q plot there is a curvature at one of the ends which corresponds to a long tail. In spite of this, we can still observe that the residuals are mostly normally distributed.
+                
+                In the boxplots graph we can see that the boxplot for the control group is not exactly symmetric, suggesting that the data in this group is not completely normally distributed, whereas for the two treatment groups they seem mostly symmetric and therefore normally distributed.
+                
+                \item \textbf{Homoscedasticity} -- We then need to verify that the variances in each population are equal (\emph{homogeneity of variance}). In Figure \ref{figure:AoVvar}, we see that the variability of the residuals is similar if we do not consider the outliers. We can also see in the boxplots in Figure \ref{figure:boxplots} that the variability is similar for the control and the treatment-1 groups, while it is slightly smaller for the treatment-2 group. For heteroscedastic data there are alternative approaches available such as ANOVA with Welch correction; however, we use basic ANOVA because if it was not for the outliers the data would be homoscedastic.
+
+                \item \textbf{Independence} -- We do not observe anything that suggests lack of independence in the observations. We assume randomization of plants to treatments, meaning that the plants were randomly assigned to one of the three groups.
+            \end{itemize}
+        
+        \subsubsection{Result}
+            
+            In Table \ref{table:anova_res} one can see that the p-value obtained is $0.0159$. Since this p-value is smaller than $0.05$, for significance level $\alpha=0.05$ we reject the null hypothesis $H$ that all the means are equal. According to the alternative hypothesis $A$, there is at least one significantly differing group mean. The next section describes how we find out which one (or which ones).
+            
+            \begin{table}[htp]
+            \centering
+            <<echo=FALSE, results = "asis">>=
+            library(xtable)
+            pg.aov <- aov(lm(weight ~ group, data = PlantGrowth))
+            print(xtable(summary(pg.aov)), floating=FALSE, comment=FALSE)
+            @
+            \caption{ANOVA result}
+            \label{table:anova_res}
+            \end{table}
+
+\begin{figure}[htp]
+\vspace{-55pt} 
+\makebox[\linewidth][c]{%
+\begin{subfigure}{.6\textwidth}
+<<echo=FALSE, fig=TRUE, fig.height=5, fig.width=5>>=
+pg.aov <- aov(lm(weight ~ group, data = PlantGrowth))
+plot(pg.aov, 1)
+@
+\caption{Per-group variance of residuals}
+\label{figure:AoVvar}
+\end{subfigure}
+\begin{subfigure}{.6\textwidth}
+<<echo=FALSE, fig=TRUE, fig.height=5, fig.width=5>>=
+pg.aov <- aov(lm(weight ~ group, data = PlantGrowth))
+plot(pg.aov, 2)
+@
+\caption{Residuals distribution compared to normal distribution}
+\label{figure:AoVqq}
+\end{subfigure}
+}
+\caption{Statistics of ANOVA residuals}
+\label{figure:AoVplots}
+\end{figure}
+
+    \subsection{Tukey's Honest Significant Difference test}
+        To determine which group or groups have a significantly different mean, we need to carry out pairwise comparisons. For this purpose, we use Tukey's Honest Significant Difference test.
+        It computes, for every possible pair of treatment groups, the 95\% confidence interval for the difference between each pair of means ($\mu_i-\mu_j$)
+        and the adjusted p-values $p\ adj$. The output is shown in Table \ref{table:TukeyHSD}. We can see that the only significant difference between groups is for treatment 1 and treatment 2, since this is the only adjusted p-value smaller than 0.05. These results are plotted in Figure \ref{figure:TukeyHSD}. If the confidence interval for a difference of means does not include the 0, it means that the two means being compared are significantly different at given confidence level. According to the plot the only statistically significant difference at 95\% confidence level is between the treatment-1 and treatment-2 groups, since this is the only interval not including the 0. 
+
+\begin{table}[htp]
+\centering
+<<echo=FALSE, results = "asis">>=
+pg.aov <- aov(lm(weight ~ group, data = PlantGrowth))
+pg.hsd <- TukeyHSD(pg.aov, "group", conf.level=0.95)
+print(xtable(as.data.frame(pg.hsd$group)), floating=FALSE, comment=FALSE)
+@
+\caption{Tukey's Honest Significant Difference for the comparison of Group categories}
+\label{table:TukeyHSD}
+\end{table} 
+ 
+ 
+\begin{figure}[htp]
+\vspace{-5pt} 
+\centering
+\scalebox{.8}{
+<<echo=FALSE, fig=TRUE, fig.height=4, fig.width=7>>=
+pg.aov <- aov(lm(weight ~ group, data = PlantGrowth))
+pg.hsd <- TukeyHSD(pg.aov, "group", conf.level=0.95)
+plot(pg.hsd)
+@
+}
+\vspace{-7pt} 
+\caption{Tukey's Honest Significant Difference}
+\label{figure:TukeyHSD}
+\end{figure}
+
+\section{Conclusions}
+
+Based on the analysis of the data, we conclude that treatments 1 and 2 are significantly different at 5\% level and treatment 2 seems to be better than treatment 1. We come to this conclusion based on the result obtained from Tukey's Honest Significant Difference test, where we see that the mean of the treatment-2 group is significantly larger than the mean of the treatment-1 group. However, neither of the treatments is significantly different from the control group. Therefore, we conclude that neither of the treatments had a significant effect on the weight of plants.
+
+
+
+\end{document}
+
+%% Table
+\begin{table}[htp]
+\centering
+<<echo=FALSE, results = "asis">>=
+library(xtable)
+print(xtable(summary(PlantGrowth)), floating=FALSE, comment=FALSE)
+@
+\caption{Caption}
+\label{table:something sweet alright}
+\end{table}
+
+
+
+%% Figure
+\begin{figure}[htp]
+\centering
+<<echo=FALSE, fig=TRUE, height=10, width=6>>=
+data(PlantGrowth)
+pairs( ~  weight + group, data=PlantGrowth)
+@
+\caption{Some caption you want the world to know.}
+\label{figure:something sweet alright 2}
+\end{figure}
